@@ -10,7 +10,6 @@ psycopg2 = "*"
 xgboost = "*"
 sklearn = "*"
 category-encoders = "*"
-python-dotenv = "*"
 psycopg2-binary = "*"
 
 [dev-packages]
