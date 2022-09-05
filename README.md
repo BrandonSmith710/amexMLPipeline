@@ -1,4 +1,4 @@
-This application offers three Python scripts which execute ETL processes for an American Express credit card owner dataset.
+This application offers several Python scripts which execute ETL & CRUD processes relating to an American Express credit card owner dataset.
 
 transform_load.py will clean and transform csv files and insert into their respective tables
 
