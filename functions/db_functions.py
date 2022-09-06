@@ -5,6 +5,22 @@ from psycopg2.extensions import AsIs
 from os import getenv
 
 
+
+customers_train_columns = '''
+    cid, name, age, gender, owns_car, owns_house, num_children,
+    yearly_income, num_days_employed, occupation, num_family_members,
+    migrant_worker, yearly_payments, credit_limit,
+    percent_credit_limit_used, credit_score, prev_defaults,
+    default_in_last_six_months, credit_card_default
+    '''.split(', ')
+customers_columns = '''
+    cid, name, age, gender, owns_car, owns_house, num_children,
+    yearly_income, num_days_employed, occupation, num_family_members,
+    migrant_worker, yearly_payments, credit_limit,
+    percent_credit_limit_used, credit_score, prev_defaults,
+    default_in_last_six_months
+    '''.split(', ')
+
 def get_conn():
     return psycopg2.connect(host = getenv('HOST'),
                             password = getenv('PASSWORD'),
@@ -72,10 +88,12 @@ def load_test(conn, curs, test) -> str:
     return 'customers successfully inserted'
 
 
-def update_info(conn, curs, id, table, fields) -> str:
+def update_info(conn, curs, table, id, fields) -> str:
     '''update database record matching id to the values specified in fields
        parameters: conn - psycopg2 connection
                    curs - psycopg2 cursor
+                   table - table containing record primary key of id
+                   id - cid belonging to primary key index of table
                    fields (list of tuples ex. (field, new_value))
     '''
 
@@ -100,3 +118,36 @@ def update_info(conn, curs, id, table, fields) -> str:
     b = list(curs.fetchall()[0])
     print(str(a) + '\n\n' + str(b))
     return f'Customer {id} updated'
+
+
+def add_customer(conn, curs, table, cols, data) -> str:
+    '''insert a record into table
+    parameters: conn - psycopg2 connection
+                curs - psycopg2 cursor
+                table - customers or customers_train
+                cols - list of column names for table
+                data - list of data for insertion
+    '''
+
+    data = ', '.join(map(str, data))
+    query_1 = sql.SQL('INSERT INTO {} (%s) VALUES (%s);').format(
+        sql.Identifier(table))
+    curs.execute(query_1, (AsIs(', '.join(cols)), AsIs(data)))
+    conn.commit()
+    return 'Successfully added customer'
+
+
+def delete_customer(conn, curs, table, cid) -> str:
+    '''delete a record from table
+    parameters: conn - psycopg2 connection
+                curs - psycopg2 cursor
+                table - customers or customers_train
+                cid - cid found in primary key index of table
+    '''
+
+    query_1 = sql.SQL('DELETE FROM {} WHERE cid = %s;').format(
+        sql.Identifier(table))
+    
+    curs.execute(query_1, (cid,))
+    conn.commit()
+    return 'Successfully deleted customer'

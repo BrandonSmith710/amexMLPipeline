@@ -1,8 +1,8 @@
 from psycopg2 import sql
 
 
-def yes_no_input() -> str:
-    # prompt user for input until yes or no is specified
+def yes_no_input() -> bool:
+    # prompt user for yes/no input until yes or no is specified
 
     answer = ''
     while not answer:
@@ -15,8 +15,8 @@ def yes_no_input() -> str:
         print('Entry must be yes or no')
 
 
-def table_input() -> str:
-    # prompt user for input until a table is specified
+def table_input() -> str or None:
+    # prompt user for table name until a table is specified
 
     table = ''
     while not table:
@@ -24,9 +24,27 @@ def table_input() -> str:
             'Enter table customers or customers_train: '
             ).lower()
         if not table in ['customers', 'customers_train']:
+            if 'exit' in table.lower():
+                return None
             table = ''
             print('Table does not exist')
     return table
+
+def add_or_delete() -> bool or str:
+    # prompt user for instruction until add or delete is specified
+
+    answer = ''
+    while not answer:
+        print('Choose to add or delete from a table')
+        answer = input('Add/Delete: ').lower()
+        if 'exit' in answer:
+            return 'exit'
+        if 'delete' in answer:
+            return False
+        if 'add' in answer:
+            return True
+        answer = ''
+        print('Acceptable entries are: Add, add, Delete, delete')
 
 
 def cid_check(val) -> str or Exception:
@@ -95,6 +113,50 @@ def occupation_check(val) -> str or Exception:
     raise Exception
 
 
+validator = {
+        'cid': cid_check, 'name': name_check, 'age': int_check,
+        'gender': gender_check, 'owns_car': owner_check, 'owns_house':
+        owner_check, 'num_children': int_check, 'yearly_income': float,
+        'num_days_employed': int_check, 'occupation': occupation_check,
+        'num_family_members': int_check, 'migrant_worker': int_check,
+        'yearly_payments': float, 'credit_limit': float,
+        'percent_credit_limit_used': int_check, 'credit_score': int_check,
+        'prev_defaults': int_check, 'default_in_last_six_months': int_check,
+        }
+
+def collect_input(table) -> list or None:
+    '''prompt user for data corresponding to the fields in table
+    parameters: table - customers or customers_train
+    returns: list containing table data
+            or None if user enters 'exit'
+    '''
+
+    fields = validator
+    updates = []
+    if table == 'customers_train':
+        fields['credit_card_default'] = int_check
+    for field in fields:
+        answer = ''
+        while not answer:
+            answer = input(f'Enter {field}: ')
+            if 'exit' in answer.lower():
+                print('Exiting...')
+                return None
+            try:
+                answer = fields[field](answer)
+            except Exception as e:
+                print('Incompatible value entry', e)
+                answer = ''
+            if answer == 0:
+                updates.append(0)
+                break
+        else:
+            if type(answer) == str:
+                answer = f"'{answer}'"
+            updates.append(answer)
+    return updates
+
+
 def validate_cid(curs, table, id) -> str or bool:
     '''verify the id exists in table's primary key index
     parameters: curs - psycopg2 cursor
@@ -117,21 +179,14 @@ def field_inputs(adding_field, table) -> list or None:
     '''take and validate user input for fields to update
        parameters: adding_field - bool
                    table - customers or customers_train
+                   validator - dictionary containing functions to
+                               validate input
        returns: list of tuples ex. [(field, new_value)],
                 or None if user chooses to abandon update
     '''
-
+    
+    fields = validator
     updates = []
-    fields = {
-        'cid': cid_check, 'name': name_check, 'age': int_check,
-        'gender': gender_check, 'owns_car': owner_check, 'owns_house':
-        owner_check, 'num_children': int_check, 'yearly_income': float,
-        'num_days_employed': int_check, 'occupation': occupation_check,
-        'num_family_members': int_check, 'migrant_worker': int_check,
-        'yearly_payments': float, 'credit_limit': float,
-        'percent_credit_limit_used': int_check, 'credit_score': int_check,
-        'prev_defaults': int_check, 'default_in_last_six_months': int_check,
-        }
     if table == 'customers_train':
         fields['credit_card_default'] = int_check
     while adding_field:
@@ -154,7 +209,7 @@ def field_inputs(adding_field, table) -> list or None:
                 try:
                     value = fields[field](value)
                 except Exception as e:
-                    print('Incompatible value entry', e)
+                    print('Incompatible value entry')
                     continue
                 print(f'Are you sure you want to set {field} = {value}?')
                 proceed = yes_no_input()

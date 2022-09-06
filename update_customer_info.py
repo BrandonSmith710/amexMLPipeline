@@ -27,8 +27,8 @@ if __name__ == '__main__':
                 print(f'Error finding cid "{id}" in table "{table}"')
         fields = field_inputs(adding_field = adding_field, table = table)
         if fields:
-            print(update_info(conn = conn, curs = curs, id = cid,
-                              table = table, fields = fields))
+            print(update_info(conn = conn, curs = curs, table = table,
+                              id = cid, fields = fields))
         else:
             print('Exited from update')
         print('Update another customer?')
