@@ -1,4 +1,6 @@
-from functions.db_functions import get_conn, get_curs, disconnect, update_info
+from functions.db_functions import (get_conn, get_curs, 
+                                    disconnect, update_info)
+from functions.db_functions import validate_cid
 from functions.input_functions import *
 
 conn = get_conn()

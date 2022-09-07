@@ -1,6 +1,10 @@
-from functions.db_functions import add_customer, delete_customer, get_conn, get_curs, disconnect
-from functions.db_functions import customers_columns, customers_train_columns
+from functions.db_functions import (get_conn, get_curs, disconnect,
+                                    add_customer, delete_customer)
+from functions.db_functions import (customers_train_columns, 
+                                    customers_columns,
+                                    validate_cid)
 from functions.input_functions import *
+
 
 conn = get_conn()
 curs = get_curs(conn = conn)
@@ -24,7 +28,7 @@ if __name__ == '__main__':
             updating = yes_no_input()
             continue
         elif aod:
-            data = collect_input(table = table)
+            data = collect_insert_input(table = table)
             if data:
                 print(add_customer(conn = conn, curs = curs, table = table,
                                    cols = cols, data = data))

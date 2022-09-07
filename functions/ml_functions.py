@@ -1,10 +1,11 @@
-import pickle
-import pandas as pd
-import numpy as np
 from xgboost import XGBClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import GridSearchCV
 from category_encoders import OrdinalEncoder
+import pickle
+import pandas as pd
+from psycopg2 import sql
+
 
 def transform_train(train):
     #transform training dataframe before insertion into table customers_train
@@ -46,7 +47,8 @@ def transform_test(test):
                         columns = test.columns)
 
 def train_xgb(curs) -> str:
-    # retrieve data for each record in database to train & serialize xgb classifier
+    '''retrieve data for each record in database, then train
+    & serialize xgb classifier'''
 
     curs.execute('''SELECT age
                     , owns_car
@@ -81,21 +83,23 @@ def train_xgb(curs) -> str:
     return f'Model accuracy: {pipe_xgb.score(X, y)}'
 
 
-def predict_default(curs, id, model) -> str:
+def predict_default(curs, table, id, model) -> str:
     '''retrieve record corresponding to id and predict credit card default
        parameters: curs - psycopg2 cursor
                    id - verified cid for existing database record
                    model - trained classification model
     '''
 
-    curs.execute('''SELECT age
-                    , owns_car
-                    , owns_house
-                    , num_children
-                    , yearly_income
-                    , occupation
-                    FROM customers
-                    WHERE cid = %s;''', (id,))
+    curs.execute(sql.SQL('''SELECT age
+                            , owns_car
+                            , owns_house
+                            , num_children
+                            , yearly_income
+                            , occupation
+                            FROM {}
+                            WHERE cid = %s;''').format(
+                                sql.Identifier(table)
+                            ), (id,))
     row = curs.fetchall()
     row = [[0 if x == 'N' else 1 if x == 'Y' else x for x in row[0]]]
     s = pd.DataFrame(data = row,

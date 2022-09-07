@@ -5,12 +5,12 @@ name = "pypi"
 
 [packages]
 pandas = "*"
-numpy = "*"
 psycopg2 = "*"
 xgboost = "*"
 sklearn = "*"
 category-encoders = "*"
 psycopg2-binary = "*"
+numpy = "*"
 
 [dev-packages]
 

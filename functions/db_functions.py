@@ -71,7 +71,7 @@ def load_test(conn, curs, test) -> str:
     '''
 
     curs.execute(
-        '''CREATE TABLE IF NOT EXISTS customers_train (cid VARCHAR PRIMARY KEY,
+        '''CREATE TABLE IF NOT EXISTS customers (cid VARCHAR PRIMARY KEY,
         name VARCHAR, age int, gender VARCHAR, owns_car VARCHAR, owns_house
         VARCHAR, num_children int, yearly_income float, num_days_employed int,
         occupation VARCHAR, num_family_members int, migrant_worker int,
@@ -79,13 +79,32 @@ def load_test(conn, curs, test) -> str:
         int, credit_score int, prev_defaults int, default_in_last_six_months
         int);''')
     execute_values(curs,
-        '''INSERT INTO customers_train (cid, name, age, gender, owns_car,
+        '''INSERT INTO customers (cid, name, age, gender, owns_car,
         owns_house, num_children, yearly_income, num_days_employed, occupation,
         num_family_members, migrant_worker, yearly_payments, credit_limit,
         percent_credit_limit_used, credit_score, prev_defaults,
         default_in_last_six_months) VALUES %s;''', test.values)
     conn.commit()
     return 'customers successfully inserted'
+
+
+def validate_cid(curs, table, id) -> str or bool:
+    '''verify the id exists in table's primary key index
+    parameters: curs - psycopg2 cursor
+                table - customers or customers_train
+                id - uppercase alphanumeric cid
+    returns: cid if valid, else False
+    '''
+
+    try:
+        curs.execute(
+            sql.SQL("SELECT name FROM {table} WHERE cid = %s;").format(
+                table = sql.Identifier(table)), (id,)
+            )
+        name = curs.fetchall()[0]
+        return name
+    except:
+        return False
 
 
 def update_info(conn, curs, table, id, fields) -> str:
@@ -107,9 +126,11 @@ def update_info(conn, curs, table, id, fields) -> str:
         col_names.append(a)
     e = ', '.join(f'{a} = {b}' for a, b in zip(col_names, new_vals))
     query_1 = sql.SQL('SELECT * FROM {table} WHERE cid = %s;').format(
-                table = sql.Identifier(table))
+        table = sql.Identifier(table)
+    )
     query_2 = sql.SQL('UPDATE {table} SET %s WHERE cid = %s;').format(
-                        table = sql.Identifier(table))
+        table = sql.Identifier(table)
+    )
     curs.execute(query_1, (id,))
     a = list(curs.fetchall()[0])
     curs.execute(query_2, (AsIs(e), id))
@@ -131,7 +152,8 @@ def add_customer(conn, curs, table, cols, data) -> str:
 
     data = ', '.join(map(str, data))
     query_1 = sql.SQL('INSERT INTO {} (%s) VALUES (%s);').format(
-        sql.Identifier(table))
+        sql.Identifier(table)
+    )
     curs.execute(query_1, (AsIs(', '.join(cols)), AsIs(data)))
     conn.commit()
     return 'Successfully added customer'
@@ -146,8 +168,17 @@ def delete_customer(conn, curs, table, cid) -> str:
     '''
 
     query_1 = sql.SQL('DELETE FROM {} WHERE cid = %s;').format(
-        sql.Identifier(table))
-    
+        sql.Identifier(table)
+    )
     curs.execute(query_1, (cid,))
     conn.commit()
     return 'Successfully deleted customer'
+
+
+def filter_table(curs, table, fields):
+
+    query_1 = sql.SQL('SELECT * FROM {} WHERE %s;').format(
+        sql.Identifier(table)
+    )
+    curs.execute(query_1, (AsIs(fields),))
+    return curs.fetchall()

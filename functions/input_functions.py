@@ -1,6 +1,18 @@
 from psycopg2 import sql
 
 
+
+def numeric_prompt():
+    print('Filter operations are >, <, >=, <=, =')
+    print('''If using more than one operator, separate each with a
+          comma. ex. >= 2, <= 6''')
+
+def string_prompt():
+    print('Filter operations are start =, end =, contains')
+    print('''If using more than one operator, separate each with a
+          comma. ex. start = Dan, end = el, contains = aniel''')
+
+
 def yes_no_input() -> bool:
     # prompt user for yes/no input until yes or no is specified
 
@@ -93,6 +105,9 @@ def int_check(val) -> int or Exception:
         return int(val)
     raise Exception
 
+def conjoin_filter(params):
+    return ' AND '.join(params)
+
 
 def occupation_check(val) -> str or Exception:
     # verify the supplied value can be found in the jobs list
@@ -124,14 +139,14 @@ validator = {
         'prev_defaults': int_check, 'default_in_last_six_months': int_check,
         }
 
-def collect_input(table) -> list or None:
+def collect_insert_input(table) -> list or None:
     '''prompt user for data corresponding to the fields in table
     parameters: table - customers or customers_train
     returns: list containing table data
             or None if user enters 'exit'
     '''
 
-    fields = validator
+    fields = validator.copy()
     updates = []
     if table == 'customers_train':
         fields['credit_card_default'] = int_check
@@ -157,22 +172,70 @@ def collect_input(table) -> list or None:
     return updates
 
 
-def validate_cid(curs, table, id) -> str or bool:
-    '''verify the id exists in table's primary key index
-    parameters: curs - psycopg2 cursor
-                table - customers or customers_train
-                id - uppercase alphanumeric cid
-    returns: cid if valid, else False
-    '''
+def collect_query_params(table):
 
-    try:
-        curs.execute(
-            sql.SQL("SELECT name FROM {table} WHERE cid = %s;").format(
-                table = sql.Identifier(table)), (id,))
-        name = curs.fetchall()[0]
-        return name
-    except:
-        return False
+    fields = validator.copy()
+    filters = []
+    adding = True
+    if table == 'customers_train':
+        fields['credit_card_default'] = int_check
+    while adding:
+        answer = input('Enter field: ').lower()
+        if 'exit' in answer:
+            print('Exiting...')
+            break
+        if answer in fields:
+            params = []
+            ready_to_filter = False
+            checker = fields[answer]
+            while not ready_to_filter:
+                if checker in [int_check, float]:
+                    numeric_prompt()
+                    entry = input('Enter operations: ')
+                    if 'exit' in entry.lower():
+                        adding = False
+                        break
+                    ops = [o.strip() for o in entry.split(',')]
+                    for op in ops:
+                        if any(c in '<>=' for c in op):
+                            a = ''.join(filter(lambda x: x in '><=', op))
+                            b = ''.join(filter(lambda x: x.isdigit(), op))
+                            if b:
+                                params.append(a + ' ' + b)
+                            else:
+                                print(f'Invalid entry: {op}')
+                                break
+                    else:
+                        params = [f'{answer} {param}' for param in params]
+                        params = conjoin_filter(params)
+                        filters.append(params)
+                        ready_to_filter = True
+                else:
+                    string_prompt()
+                    entry = input('Enter operations: ')
+                    if 'exit' in entry.lower():
+                        adding = False
+                        break
+                    ops = [o.strip() for o in entry.split(',')]
+# *********************************************************************************
+
+            print('Filter by another field?')
+            adding = yes_no_input()
+        else:
+            print('Invalid field entry')
+    return filters
+
+
+
+                    # if any(b.isdigit() for b in op):
+
+                    # param = op.split('')
+
+
+            # try:
+                # value = fields[answer]
+
+    
 
 
 def field_inputs(adding_field, table) -> list or None:
@@ -184,8 +247,8 @@ def field_inputs(adding_field, table) -> list or None:
        returns: list of tuples ex. [(field, new_value)],
                 or None if user chooses to abandon update
     '''
-    
-    fields = validator
+
+    fields = validator.copy()
     updates = []
     if table == 'customers_train':
         fields['credit_card_default'] = int_check
