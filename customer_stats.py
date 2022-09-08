@@ -15,9 +15,8 @@ if __name__ == '__main__':
     if table:
         params = collect_query_params(table = table)
         params = conjoin_filter(params)
-        new = filter_table(curs = curs, table = table, fields = params)
+        new = filter_table(conn = conn, curs = curs, table = table, fields = params)
+        print(new[:5])
 
-        print(new[:3])
         
-    # print(curs.fetchall())
     disconnect(conn = conn, curs = curs)

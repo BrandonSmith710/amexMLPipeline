@@ -3,7 +3,7 @@ from psycopg2 import sql
 from psycopg2.extras import execute_values
 from psycopg2.extensions import AsIs
 from os import getenv
-
+import pandas as pd
 
 
 customers_train_columns = '''
@@ -174,11 +174,12 @@ def delete_customer(conn, curs, table, cid) -> str:
     conn.commit()
     return 'Successfully deleted customer'
 
-
-def filter_table(curs, table, fields):
-
-    query_1 = sql.SQL('SELECT * FROM {} WHERE %s;').format(
+################################################################################
+def filter_table(conn, curs, table, fields):
+    
+    query_1 = sql.SQL('''SELECT *
+                         FROM {} WHERE %s;''').format(
         sql.Identifier(table)
     )
-    curs.execute(query_1, (AsIs(fields),))
-    return curs.fetchall()
+    df = pd.read_sql(sql = query_1, con = conn, params = [AsIs(fields)])
+    return df

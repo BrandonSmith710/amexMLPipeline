@@ -8,7 +8,7 @@ def numeric_prompt():
           comma. ex. >= 2, <= 6''')
 
 def string_prompt():
-    print('Filter operations are start =, end =, contains')
+    print('Filter operations are start =, end =, contains =')
     print('''If using more than one operator, separate each with a
           comma. ex. start = Dan, end = el, contains = aniel''')
 
@@ -105,8 +105,55 @@ def int_check(val) -> int or Exception:
         return int(val)
     raise Exception
 
-def conjoin_filter(params):
+def conjoin_filter(params) -> str:
+    '''format a list parameters to SQL syntax
+    parameters: params - list of SQL conditions
+                ex. [age >= 35, age < 50, name ILIKE 'alex%']
+    '''
+
     return ' AND '.join(params)
+
+
+def process_filter_numeric(answer, entry) -> list or None:
+    
+    params = []
+    ops = [o.strip() for o in entry.split(',')]
+    for op in ops:
+        if any(c in '<>=' for c in op):
+            a = ''.join(filter(lambda x: x in '><=', op))
+            b = ''.join(filter(lambda x: x.isdigit(), op))
+            if b:
+                params.append(a + ' ' + b)
+            else:
+                print(f'Invalid entry: {op}')
+                return None
+        else:
+            print(f'Invalid entry: {op}')
+            return None
+    return [f'{answer} {param}' for param in params]
+
+
+def process_filter_string(answer, entry) -> list or None:
+
+    params = []
+    ops = [o.strip() for o in entry.split(',')]
+    for op in ops:
+        if '=' in op:
+            a, b = op.split('=')
+            b = b.strip()
+            if 'start' in a:
+                params.append(b + '%')
+            elif 'end' in a:
+                params.append('%' + b)
+            elif 'contains' in a:
+                params.append('%' + b + '%')
+            else:
+                print(f'Invalid entry: {op}')
+                return None
+        else:
+            print(f'Invalid entry: {op}')
+            return None
+    return [f"{answer} ILIKE '{param}'" for param in params]
 
 
 def occupation_check(val) -> str or Exception:
@@ -180,63 +227,37 @@ def collect_query_params(table):
     if table == 'customers_train':
         fields['credit_card_default'] = int_check
     while adding:
-        answer = input('Enter field: ').lower()
+        answer = input('Enter field: ').lower().strip()
         if 'exit' in answer:
             print('Exiting...')
             break
         if answer in fields:
-            params = []
             ready_to_filter = False
             checker = fields[answer]
             while not ready_to_filter:
                 if checker in [int_check, float]:
-                    numeric_prompt()
-                    entry = input('Enter operations: ')
-                    if 'exit' in entry.lower():
-                        adding = False
-                        break
-                    ops = [o.strip() for o in entry.split(',')]
-                    for op in ops:
-                        if any(c in '<>=' for c in op):
-                            a = ''.join(filter(lambda x: x in '><=', op))
-                            b = ''.join(filter(lambda x: x.isdigit(), op))
-                            if b:
-                                params.append(a + ' ' + b)
-                            else:
-                                print(f'Invalid entry: {op}')
-                                break
-                    else:
-                        params = [f'{answer} {param}' for param in params]
-                        params = conjoin_filter(params)
-                        filters.append(params)
-                        ready_to_filter = True
+                    prompt = numeric_prompt
+                    processor = process_filter_numeric
                 else:
-                    string_prompt()
-                    entry = input('Enter operations: ')
-                    if 'exit' in entry.lower():
-                        adding = False
-                        break
-                    ops = [o.strip() for o in entry.split(',')]
-# *********************************************************************************
-
+                    prompt = string_prompt
+                    processor = process_filter_string
+                prompt()
+                entry = input('Enter operations: ')
+                if 'exit' in entry.lower():
+                    adding = False
+                    break
+                processed = processor(answer = answer, entry = entry)
+                if not processed:
+                    continue
+                params = conjoin_filter(params = processed)
+                filters.append(params)
+                ready_to_filter = True          
             print('Filter by another field?')
             adding = yes_no_input()
         else:
             print('Invalid field entry')
     return filters
-
-
-
-                    # if any(b.isdigit() for b in op):
-
-                    # param = op.split('')
-
-
-            # try:
-                # value = fields[answer]
-
     
-
 
 def field_inputs(adding_field, table) -> list or None:
     '''take and validate user input for fields to update
