@@ -58,7 +58,6 @@ def train_xgb(curs) -> str:
                     , occupation
                     , credit_card_default
                     FROM customers_train;''')
-
     train = pd.DataFrame(data = curs.fetchall(),
                          columns = ['age', 'owns_car', 'owns_house',
                                    'no_of_children', 'net_yearly_income',
@@ -71,8 +70,8 @@ def train_xgb(curs) -> str:
     ord_enc = OrdinalEncoder(cols = ['occupation_type'])
     pipe_xgb = make_pipeline(ord_enc, xgb)
     params = {'xgbclassifier__max_depth': range(15, 21),
-            'xgbclassifier__booster': ['gbtree', 'gblinear', 'dart'],
-            'xgbclassifier__n_estimators': range(60, 100, 10)}
+              'xgbclassifier__booster': ['gbtree', 'gblinear', 'dart'],
+              'xgbclassifier__n_estimators': range(60, 100, 10)}
     xgbgs = GridSearchCV(estimator = pipe_xgb, param_grid = params, cv = 5)
     xgbgs.fit(X, y)
     pipe_xgb = xgbgs.best_estimator_

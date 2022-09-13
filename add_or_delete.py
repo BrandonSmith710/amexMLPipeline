@@ -1,8 +1,6 @@
 from functions.db_functions import (get_conn, get_curs, disconnect,
                                     add_customer, delete_customer)
-from functions.db_functions import (customers_train_columns, 
-                                    customers_columns,
-                                    validate_cid)
+from functions.db_functions import validate_cid
 from functions.input_functions import *
 
 
@@ -16,10 +14,8 @@ if __name__ == '__main__':
     while updating:
         print('Enter exit to abandon update')
         table = table_input()
-        if table == 'customers':
-            cols = customers_columns
-        elif table == 'customers_train':
-            cols = customers_train_columns
+        if table:
+            cols = get_table_fields(table = table)
         else:
             break
         aod = add_or_delete()
@@ -44,7 +40,7 @@ if __name__ == '__main__':
                 continue
             try:
                 id = cid_check(id1)
-            except Exception as e:
+            except Exception:
                 print('Invalid cid entry')
                 continue
             name = validate_cid(curs = curs, table = table, id = id)

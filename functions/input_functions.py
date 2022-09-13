@@ -7,6 +7,7 @@ def numeric_prompt():
     print('''If using more than one operator, separate each with a
           comma. ex. >= 2, <= 6''')
 
+
 def string_prompt():
     print('Filter operations are start =, end =, contains =')
     print('''If using more than one operator, separate each with a
@@ -21,7 +22,7 @@ def yes_no_input() -> bool:
         answer = input('Yes/No: ')
         if 'no' in answer.lower():
             return False
-        elif 'yes' in answer.lower():
+        if 'yes' in answer.lower():
             return True
         answer = ''
         print('Entry must be yes or no')
@@ -83,7 +84,7 @@ def gender_check(val) -> str or Exception:
 
     if 'f' in val.lower():
         return 'F'
-    elif 'm' in val.lower():
+    if 'm' in val.lower():
         return 'M'
     raise Exception
 
@@ -93,7 +94,7 @@ def owner_check(val) -> str or Exception:
 
     if 'y' in val.lower():
         return 'Y'
-    elif 'n' in val.lower():
+    if 'n' in val.lower():
         return 'N'
     raise Exception
 
@@ -105,8 +106,9 @@ def int_check(val) -> int or Exception:
         return int(val)
     raise Exception
 
+
 def conjoin_filter(params) -> str:
-    '''format a list parameters to SQL syntax
+    '''format a list of conditions to SQL syntax
     parameters: params - list of SQL conditions
                 ex. [age >= 35, age < 50, name ILIKE 'alex%']
     '''
@@ -114,7 +116,7 @@ def conjoin_filter(params) -> str:
     return ' AND '.join(params)
 
 
-def process_filter_numeric(answer, entry) -> list or None:
+def process_filter_numeric(field, entry) -> list or None:
     
     params = []
     ops = [o.strip() for o in entry.split(',')]
@@ -130,17 +132,17 @@ def process_filter_numeric(answer, entry) -> list or None:
         else:
             print(f'Invalid entry: {op}')
             return None
-    return [f'{answer} {param}' for param in params]
+    return [f'{field} {param}' for param in params]
 
 
-def process_filter_string(answer, entry) -> list or None:
+def process_filter_string(field, entry) -> list or None:
 
     params = []
     ops = [o.strip() for o in entry.split(',')]
     for op in ops:
         if '=' in op:
             a, b = op.split('=')
-            b = b.strip()
+            a, b = a.lower(), b.strip()
             if 'start' in a:
                 params.append(b + '%')
             elif 'end' in a:
@@ -153,7 +155,7 @@ def process_filter_string(answer, entry) -> list or None:
         else:
             print(f'Invalid entry: {op}')
             return None
-    return [f"{answer} ILIKE '{param}'" for param in params]
+    return [f"{field} ILIKE '{param}'" for param in params]
 
 
 def occupation_check(val) -> str or Exception:
@@ -186,6 +188,15 @@ validator = {
         'prev_defaults': int_check, 'default_in_last_six_months': int_check,
         }
 
+
+def get_table_fields(table):
+
+    fields = validator.copy()
+    if table == 'customers_train':
+        fields['credit_card_default'] = int_check
+    return fields
+
+
 def collect_insert_input(table) -> list or None:
     '''prompt user for data corresponding to the fields in table
     parameters: table - customers or customers_train
@@ -193,10 +204,8 @@ def collect_insert_input(table) -> list or None:
             or None if user enters 'exit'
     '''
 
-    fields = validator.copy()
     updates = []
-    if table == 'customers_train':
-        fields['credit_card_default'] = int_check
+    fields = get_table_fields(table = table)
     for field in fields:
         answer = ''
         while not answer:
@@ -206,8 +215,8 @@ def collect_insert_input(table) -> list or None:
                 return None
             try:
                 answer = fields[field](answer)
-            except Exception as e:
-                print('Incompatible value entry', e)
+            except Exception:
+                print('Incompatible value entry')
                 answer = ''
             if answer == 0:
                 updates.append(0)
@@ -219,23 +228,20 @@ def collect_insert_input(table) -> list or None:
     return updates
 
 
-def collect_query_params(table):
+def collect_query_params(table) -> list or None:
 
-    fields = validator.copy()
     filters = []
     adding = True
-    if table == 'customers_train':
-        fields['credit_card_default'] = int_check
+    fields = get_table_fields(table = table)
     while adding:
-        answer = input('Enter field: ').lower().strip()
-        if 'exit' in answer:
+        field = input('Enter field: ').lower().strip()
+        if 'exit' in field:
             print('Exiting...')
-            break
-        if answer in fields:
+            return None
+        if field in fields:
             ready_to_filter = False
-            checker = fields[answer]
             while not ready_to_filter:
-                if checker in [int_check, float]:
+                if fields[field] in [int_check, float]:
                     prompt = numeric_prompt
                     processor = process_filter_numeric
                 else:
@@ -246,7 +252,7 @@ def collect_query_params(table):
                 if 'exit' in entry.lower():
                     adding = False
                     break
-                processed = processor(answer = answer, entry = entry)
+                processed = processor(field = field, entry = entry)
                 if not processed:
                     continue
                 params = conjoin_filter(params = processed)
@@ -269,10 +275,8 @@ def field_inputs(adding_field, table) -> list or None:
                 or None if user chooses to abandon update
     '''
 
-    fields = validator.copy()
     updates = []
-    if table == 'customers_train':
-        fields['credit_card_default'] = int_check
+    fields = get_table_fields(table = table)
     while adding_field:
         entry = input(
             'Enter field to update and its new value separated by comma: '
@@ -286,13 +290,13 @@ def field_inputs(adding_field, table) -> list or None:
                     return updates
             print("Exiting...")
             return None
-        elif ',' in entry:
+        if ',' in entry:
             entry = entry.split(',')
             field, value = entry[0].lower().strip(), entry[1].strip()
             if field in fields:
                 try:
                     value = fields[field](value)
-                except Exception as e:
+                except Exception:
                     print('Incompatible value entry')
                     continue
                 print(f'Are you sure you want to set {field} = {value}?')

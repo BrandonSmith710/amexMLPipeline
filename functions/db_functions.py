@@ -6,21 +6,6 @@ from os import getenv
 import pandas as pd
 
 
-customers_train_columns = '''
-    cid, name, age, gender, owns_car, owns_house, num_children,
-    yearly_income, num_days_employed, occupation, num_family_members,
-    migrant_worker, yearly_payments, credit_limit,
-    percent_credit_limit_used, credit_score, prev_defaults,
-    default_in_last_six_months, credit_card_default
-    '''.split(', ')
-customers_columns = '''
-    cid, name, age, gender, owns_car, owns_house, num_children,
-    yearly_income, num_days_employed, occupation, num_family_members,
-    migrant_worker, yearly_payments, credit_limit,
-    percent_credit_limit_used, credit_score, prev_defaults,
-    default_in_last_six_months
-    '''.split(', ')
-
 def get_conn():
     return psycopg2.connect(host = getenv('HOST'),
                             password = getenv('PASSWORD'),
@@ -146,7 +131,8 @@ def add_customer(conn, curs, table, cols, data) -> str:
     parameters: conn - psycopg2 connection
                 curs - psycopg2 cursor
                 table - customers or customers_train
-                cols - list of column names for table
+                cols - dict with column name keys or
+                       list of column names for table
                 data - list of data for insertion
     '''
 
@@ -175,11 +161,50 @@ def delete_customer(conn, curs, table, cid) -> str:
     return 'Successfully deleted customer'
 
 ################################################################################
-def filter_table(conn, curs, table, fields):
+def filter_table(conn, curs, table, fields) -> list:
     
-    query_1 = sql.SQL('''SELECT *
-                         FROM {} WHERE %s;''').format(
-        sql.Identifier(table)
-    )
-    df = pd.read_sql(sql = query_1, con = conn, params = [AsIs(fields)])
-    return df
+    '''find avg salary, avg number of kids, percent of users who own their car,
+    percent of users who own their house, and percent of users who defaulted in
+    the last six months from table after filtering by input conditions'''
+
+    query_1 = sql.SQL('''with one as 
+                            (SELECT
+                             SUM(CAST(CAST(owns_car AS BOOLEAN) AS INTEGER)) as sc
+                             , SUM(CAST(CAST(owns_house AS BOOLEAN) AS INTEGER)) as sh
+                             , SUM(default_in_last_six_months) as sd
+                             , CAST(COUNT(*) AS NUMERIC) as count
+                             , CAST(AVG(yearly_income) AS NUMERIC) as avg_salary
+                             , AVG(num_children) as avg_num_kids
+                             FROM {} WHERE %s)
+                         SELECT 
+                         ROUND(avg_salary, 2) as avg_salary
+                         , ROUND(avg_num_kids)
+                         , ROUND(
+                            CAST(sc AS NUMERIC) / count * 100, 2)
+                            as percent_owns_car
+                         , ROUND(
+                            CAST(sh AS NUMERIC) / count * 100, 2)
+                            as percent_owns_house
+                         , ROUND(
+                            CAST(sd AS NUMERIC) / count * 100, 2)
+                            as percent_default_in_last_six_months
+                         FROM one;''').format(sql.Identifier(table))
+
+    # what are three highest salaries per gender per occupation
+    query_2 = sql.SQL('''with one as
+                            (SELECT
+                            occupation
+                            , gender
+                            , yearly_income
+                            , rank() over (PARTITION BY occupation, gender
+                                           ORDER BY yearly_income DESC) as rank
+                            FROM {} WHERE %s
+                            GROUP BY occupation, gender, yearly_income)
+                        SELECT * FROM one
+                        WHERE rank <= 3;''').format(sql.Identifier(table))
+                        # ORDER BY yearly_income DESC
+    curs.execute(query_1, (AsIs(fields),))
+
+    # df = pd.read_sql(sql = query_1, con = conn, params = [AsIs(fields)])
+    # return df
+    return curs.fetchall()
