@@ -19,8 +19,9 @@ if __name__ == '__main__':
             params = collect_query_params(table = table)
             if params:
                 params = conjoin_filter(params)
-                new = filter_table(conn = conn, curs = curs, table = table, fields = params)
-                print(new[:30])
+                new = filter_table(curs = curs, table = table, fields = params)
+                print('Columns: \n' + ' '.join(d.name for d in new[0]))
+                print(new[1][:30])
             print('Filter another table?')
             querying = yes_no_input()
         else:

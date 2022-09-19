@@ -160,38 +160,15 @@ def delete_customer(conn, curs, table, cid) -> str:
     conn.commit()
     return 'Successfully deleted customer'
 
-################################################################################
-def filter_table(conn, curs, table, fields) -> list:
+
+def filter_table(curs, table, fields) -> list:
     
-    '''find avg salary, avg number of kids, percent of users who own their car,
-    percent of users who own their house, and percent of users who defaulted in
-    the last six months from table after filtering by input conditions'''
+    '''
+    query_1 filters the table according to input, and asks 
+    asks for the three highest salaries per gender per occupation
+    '''
 
-    query_1 = sql.SQL('''with one as 
-                            (SELECT
-                             SUM(CAST(CAST(owns_car AS BOOLEAN) AS INTEGER)) as sc
-                             , SUM(CAST(CAST(owns_house AS BOOLEAN) AS INTEGER)) as sh
-                             , SUM(default_in_last_six_months) as sd
-                             , CAST(COUNT(*) AS NUMERIC) as count
-                             , CAST(AVG(yearly_income) AS NUMERIC) as avg_salary
-                             , AVG(num_children) as avg_num_kids
-                             FROM {} WHERE %s)
-                         SELECT 
-                         ROUND(avg_salary, 2) as avg_salary
-                         , ROUND(avg_num_kids)
-                         , ROUND(
-                            CAST(sc AS NUMERIC) / count * 100, 2)
-                            as percent_owns_car
-                         , ROUND(
-                            CAST(sh AS NUMERIC) / count * 100, 2)
-                            as percent_owns_house
-                         , ROUND(
-                            CAST(sd AS NUMERIC) / count * 100, 2)
-                            as percent_default_in_last_six_months
-                         FROM one;''').format(sql.Identifier(table))
-
-    # what are three highest salaries per gender per occupation
-    query_2 = sql.SQL('''with one as
+    query_1 = sql.SQL('''with one as
                             (SELECT
                             occupation
                             , gender
@@ -202,9 +179,6 @@ def filter_table(conn, curs, table, fields) -> list:
                             GROUP BY occupation, gender, yearly_income)
                         SELECT * FROM one
                         WHERE rank <= 3;''').format(sql.Identifier(table))
-                        # ORDER BY yearly_income DESC
     curs.execute(query_1, (AsIs(fields),))
-
-    # df = pd.read_sql(sql = query_1, con = conn, params = [AsIs(fields)])
-    # return df
-    return curs.fetchall()
+    cols = curs.description
+    return cols, curs.fetchall()

@@ -27,6 +27,7 @@ def transform_train(train):
     train = pd.DataFrame(data = train.itertuples(index = False),
                         columns = train.columns)
 
+
 def transform_test(test):
     # transform testing dataframe before insertion into table customers
 
@@ -45,6 +46,7 @@ def transform_test(test):
     test['migrant_worker'] = test['migrant_worker'].astype(int)
     test = pd.DataFrame(data = test.itertuples(index = False),
                         columns = test.columns)
+
 
 def train_xgb(curs) -> str:
     '''retrieve data for each record in database, then train

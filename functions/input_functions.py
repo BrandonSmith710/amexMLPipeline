@@ -43,6 +43,7 @@ def table_input() -> str or None:
             print('Table does not exist')
     return table
 
+
 def add_or_delete() -> bool or str:
     # prompt user for instruction until add or delete is specified
 
